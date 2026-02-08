@@ -7,75 +7,48 @@ allowed-tools: ["Bash", "Read", "Write", "AskUserQuestion", "Glob", "Grep", "Too
 
 Generate or enrich a `CLAUDE.local.md` file for the current repository with project context, integration links, and related repos. This file is globally gitignored and automatically loaded by Claude Code.
 
-**Important: When running bash commands, never use raw glob patterns (e.g. `*.csproj`, `.claude/*.md`) as zsh will error with "no matches found" if nothing matches. Use `find` with `-name` patterns instead.**
+## Step 0: Check gitignore
 
-## Step 0: Check global gitignore
-
-Before anything else, verify that `CLAUDE.local.md` is globally gitignored. Run:
+Before anything else, verify that `CLAUDE.local.md` is gitignored. Run:
 
 ```bash
-# Check global gitignore file location
-git config --global core.excludesFile 2>/dev/null || echo "DEFAULT"
-
-# Check if CLAUDE.local.md is already in the global gitignore
-grep -q "CLAUDE.local.md" ~/.config/git/ignore 2>/dev/null && echo "FOUND_DEFAULT" || echo "NOT_IN_DEFAULT"
-grep -q "CLAUDE.local.md" "$(git config --global core.excludesFile 2>/dev/null)" 2>/dev/null && echo "FOUND_CUSTOM" || echo "NOT_IN_CUSTOM"
+bash "${CLAUDE_PLUGIN_ROOT}/scripts/check-gitignore.sh"
 ```
 
-If `CLAUDE.local.md` is NOT found in any global gitignore, warn the user:
+The script checks both the project's `.gitignore` and the global gitignore (configured path, XDG default `~/.config/git/ignore`, and common `~/.gitignore_global`).
 
-```
-⚠️  CLAUDE.local.md is not in your global gitignore.
+**Output fields:**
+- `LOCAL_IGNORED` — whether `.gitignore` in the project contains `CLAUDE.local.md`
+- `GLOBAL_IGNORED` — whether any global gitignore contains `CLAUDE.local.md`
+- `GLOBAL_CONFIGURED` — the `core.excludesFile` value, or `NONE` if not configured
+- `GLOBAL_APPEND` — the best existing global gitignore file to append to, or `NONE` if no global gitignore exists yet
 
-To prevent accidentally committing this file, run:
+**If both `LOCAL_IGNORED:false` and `GLOBAL_IGNORED:false`**, ask:
 
-  echo "CLAUDE.local.md" >> ~/.config/git/ignore
-
-Or if you use a custom global gitignore:
-
-  echo "CLAUDE.local.md" >> $(git config --global core.excludesFile)
-```
-
-Then ask:
-
-**Question**: "CLAUDE.local.md isn't globally gitignored. Want me to add it?"
+**Question**: "CLAUDE.local.md isn't gitignored. How should we handle it?"
 - Header: "Gitignore"
 - Options:
-  - **"Yes, add it"** — Append to ~/.config/git/ignore (or custom path)
-  - **"No, I'll handle it"** — Continue without adding
+  - **"Add to global gitignore (Recommended)"** — Ignores it across all repos on this machine
+  - **"Add to project .gitignore"** — Only affects this repo
+  - **"I'll handle it"** — Continue without adding
 
-If "Yes", append `CLAUDE.local.md` to the appropriate global gitignore file. If the default `~/.config/git/ignore` doesn't exist, create it.
+#### If "Add to global gitignore":
+- If `GLOBAL_APPEND` is not `NONE`: append `CLAUDE.local.md` to that file
+- If `GLOBAL_APPEND` is `NONE` (no global gitignore exists): create `~/.gitignore_global`, add `CLAUDE.local.md` to it, and run `git config --global core.excludesFile ~/.gitignore_global`
 
-If already found, continue silently.
+#### If "Add to project .gitignore":
+- Append `CLAUDE.local.md` to `.gitignore` in the repo root (create the file if it doesn't exist)
+
+**If either `LOCAL_IGNORED:true` or `GLOBAL_IGNORED:true`**, continue silently.
 
 ---
 
 ## Step 1: Auto-detect repo context
 
-Gather as much context as possible before prompting the user:
+Gather as much context as possible before prompting the user. Run:
 
 ```bash
-# Get git remote URL
-git remote get-url origin 2>/dev/null
-
-# Get repo root directory name
-basename "$(git rev-parse --show-toplevel 2>/dev/null)" 2>/dev/null
-
-# Get repo root absolute path
-git rev-parse --show-toplevel 2>/dev/null
-
-# Get current branch
-git branch --show-current 2>/dev/null
-
-# Check for existing CLAUDE.local.md
-test -f CLAUDE.local.md && echo "EXISTS" || echo "NOT_FOUND"
-
-# Find all CLAUDE*.md files in the repo root (CLAUDE.md, CLAUDE.local.md, etc.)
-find . -maxdepth 1 -name "CLAUDE*.md" 2>/dev/null
-
-# Check for package.json, pyproject.toml, etc to detect project type
-# Note: use find instead of ls globs to avoid zsh "no matches found" errors
-find . -maxdepth 1 -name "package.json" -o -name "pyproject.toml" -o -name "Cargo.toml" -o -name "go.mod" -o -name "*.csproj" -o -name "*.sln" -o -name "Makefile" -o -name "deepgram.toml" 2>/dev/null
+bash "${CLAUDE_PLUGIN_ROOT}/scripts/detect-repo.sh"
 ```
 
 Read **all** `CLAUDE*.md` files found (e.g. `CLAUDE.md`, `CLAUDE.local.md`, `CLAUDE.toml.md`, etc.) for project context. These files contain existing instructions, conventions, and project knowledge that should inform the generated `CLAUDE.local.md` — extract project description, tech stack, conventions, related repos, and any other relevant details from them.
@@ -129,7 +102,7 @@ Search for stored context about this project. Use the repo name and path to find
    ```bash
    # The path is derived from the repo's absolute path with / replaced by -
    # e.g. /Users/lukeoliff/Projects/deepgram-starters → -Users-lukeoliff-Projects-deepgram-starters
-   ls ~/.claude/projects/*/memory/MEMORY.md 2>/dev/null
+   find ~/.claude/projects -maxdepth 2 -name "MEMORY.md" -path "*/memory/*" 2>/dev/null
    ```
    Read the MEMORY.md for the matching project directory if it exists. This contains accumulated learnings about the project.
 
