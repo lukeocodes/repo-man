@@ -1,6 +1,6 @@
 {
   "name": "repo-man",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "Repo Management Details - interactive CLAUDE.local.md scaffolding for any repository",
   "author": {
     "name": "Luke Oliff",
@@ -14,5 +14,13 @@
     "repo-management",
     "scaffolding",
     "developer-experience"
-  ]
+  ],
+  "hooks": {
+    "SessionStart": [
+      {
+        "type": "command",
+        "command": "node \"${CLAUDE_PLUGIN_ROOT}/scripts/session-start-hook.mjs\""
+      }
+    ]
+  }
 }

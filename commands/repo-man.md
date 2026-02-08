@@ -9,19 +9,13 @@ Generate or enrich a `CLAUDE.local.md` file for the current repository with proj
 
 ## Step 0: Check gitignore
 
-Before anything else, verify that `CLAUDE.local.md` is gitignored. Run:
+**IMPORTANT: You MUST run the script below. Do NOT replicate its logic with inline commands.**
 
 ```bash
-bash "${CLAUDE_PLUGIN_ROOT}/scripts/check-gitignore.sh"
+node "${CLAUDE_PLUGIN_ROOT}/scripts/check-gitignore.mjs"
 ```
 
-The script checks both the project's `.gitignore` and the global gitignore (configured path, XDG default `~/.config/git/ignore`, and common `~/.gitignore_global`).
-
-**Output fields:**
-- `LOCAL_IGNORED` — whether `.gitignore` in the project contains `CLAUDE.local.md`
-- `GLOBAL_IGNORED` — whether any global gitignore contains `CLAUDE.local.md`
-- `GLOBAL_CONFIGURED` — the `core.excludesFile` value, or `NONE` if not configured
-- `GLOBAL_APPEND` — the best existing global gitignore file to append to, or `NONE` if no global gitignore exists yet
+Parse the script's output fields: `LOCAL_IGNORED`, `GLOBAL_IGNORED`, `GLOBAL_CONFIGURED`, `GLOBAL_APPEND`.
 
 **If both `LOCAL_IGNORED:false` and `GLOBAL_IGNORED:false`**, ask:
 
@@ -45,13 +39,15 @@ The script checks both the project's `.gitignore` and the global gitignore (conf
 
 ## Step 1: Auto-detect repo context
 
-Gather as much context as possible before prompting the user. Run:
+**IMPORTANT: You MUST run the script below. Do NOT replicate its logic with inline commands.**
 
 ```bash
-bash "${CLAUDE_PLUGIN_ROOT}/scripts/detect-repo.sh"
+node "${CLAUDE_PLUGIN_ROOT}/scripts/detect-repo.mjs"
 ```
 
-Read **all** `CLAUDE*.md` files found (e.g. `CLAUDE.md`, `CLAUDE.local.md`, `CLAUDE.toml.md`, etc.) for project context. These files contain existing instructions, conventions, and project knowledge that should inform the generated `CLAUDE.local.md` — extract project description, tech stack, conventions, related repos, and any other relevant details from them.
+Parse the script's output fields: `REMOTE`, `BASENAME`, `ROOT`, `BRANCH`, `LOCAL_MD`, `CLAUDE_FILES`, `MANIFESTS`.
+
+Then read **all** `CLAUDE*.md` files listed in the `CLAUDE_FILES` output (e.g. `CLAUDE.md`, `CLAUDE.local.md`, `CLAUDE.toml.md`, etc.) for project context. These files contain existing instructions, conventions, and project knowledge that should inform the generated `CLAUDE.local.md` — extract project description, tech stack, conventions, related repos, and any other relevant details from them.
 
 ---
 
@@ -96,32 +92,23 @@ Continue to **Branch B** below.
 
 Search for stored context about this project. Use the repo name and path to find matches.
 
-**Sources to check (in order of relevance):**
+**IMPORTANT: You MUST run the script below. Do NOT replicate its logic with inline commands.**
 
-1. **Claude Code auto memory** — Check if a project memory directory exists:
-   ```bash
-   # The path is derived from the repo's absolute path with / replaced by -
-   # e.g. /Users/lukeoliff/Projects/deepgram-starters → -Users-lukeoliff-Projects-deepgram-starters
-   find ~/.claude/projects -maxdepth 2 -name "MEMORY.md" -path "*/memory/*" 2>/dev/null
-   ```
-   Read the MEMORY.md for the matching project directory if it exists. This contains accumulated learnings about the project.
+Use the `BASENAME` and `ROOT` values from Step 1's detect-repo.sh output:
 
-2. **Macrodata entity files** — Check for a project entity:
-   ```bash
-   ls ~/.config/macrodata/entities/projects/ 2>/dev/null
-   ```
-   Read any entity file whose name matches or relates to the repo name. These contain structured project knowledge.
+```bash
+node "${CLAUDE_PLUGIN_ROOT}/scripts/discover-context.mjs" "<ROOT>" "<REPO_NAME>"
+```
 
-3. **Macrodata state files** — Read current workspace context:
-   - `~/.config/macrodata/state/workspace.md` — may reference this project's status, open threads, recent completions
-   - `~/.config/macrodata/state/today.md` — may have current session context about this project
+Parse the script's output fields: `CLAUDE_MEMORY`, `MACRODATA_ENTITY`, `MACRODATA_WORKSPACE`, `MACRODATA_TODAY`, `CLAUDE_LOCAL_FILES`.
 
-4. **Macrodata journal** — If the `search_memory` MCP tool is available (use ToolSearch to check), search for journal entries mentioning this project name.
+For each field that is not `NONE`, read the file to extract relevant context. These sources contain:
+- **CLAUDE_MEMORY** — Accumulated learnings about the project from Claude Code auto memory
+- **MACRODATA_ENTITY** — Structured project knowledge from macrodata
+- **MACRODATA_WORKSPACE** / **MACRODATA_TODAY** — Current workspace status and session context
+- **CLAUDE_LOCAL_FILES** — Existing plugin-specific config files
 
-5. **Project .claude/ directory** — Check for any `.local.md` files that might contain project-relevant config:
-   ```bash
-   find .claude -maxdepth 1 -name "*.local.md" 2>/dev/null
-   ```
+Additionally, if the `search_memory` MCP tool is available (use ToolSearch to check), search for journal entries mentioning the repo name.
 
 **After gathering context:**
 
