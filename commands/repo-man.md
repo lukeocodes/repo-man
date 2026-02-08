@@ -7,6 +7,8 @@ allowed-tools: ["Bash", "Read", "Write", "AskUserQuestion", "Glob", "Grep", "Too
 
 Generate or enrich a `CLAUDE.local.md` file for the current repository with project context, integration links, and related repos. This file is globally gitignored and automatically loaded by Claude Code.
 
+**Important: When running bash commands, never use raw glob patterns (e.g. `*.csproj`, `.claude/*.md`) as zsh will error with "no matches found" if nothing matches. Use `find` with `-name` patterns instead.**
+
 ## Step 0: Check global gitignore
 
 Before anything else, verify that `CLAUDE.local.md` is globally gitignored. Run:
@@ -72,7 +74,8 @@ test -f CLAUDE.local.md && echo "EXISTS" || echo "NOT_FOUND"
 test -f CLAUDE.md && echo "CLAUDE.md EXISTS" || echo "No CLAUDE.md"
 
 # Check for package.json, pyproject.toml, etc to detect project type
-ls package.json pyproject.toml Cargo.toml go.mod *.csproj *.sln Makefile deepgram.toml 2>/dev/null
+# Note: use find instead of ls globs to avoid zsh "no matches found" errors
+find . -maxdepth 1 -name "package.json" -o -name "pyproject.toml" -o -name "Cargo.toml" -o -name "go.mod" -o -name "*.csproj" -o -name "*.sln" -o -name "Makefile" -o -name "deepgram.toml" 2>/dev/null
 ```
 
 If `CLAUDE.md` exists, read it for project context.
@@ -144,7 +147,7 @@ Search for stored context about this project. Use the repo name and path to find
 
 5. **Project .claude/ directory** — Check for any `.local.md` files that might contain project-relevant config:
    ```bash
-   ls .claude/*.local.md 2>/dev/null
+   find .claude -maxdepth 1 -name "*.local.md" 2>/dev/null
    ```
 
 **After gathering context:**
