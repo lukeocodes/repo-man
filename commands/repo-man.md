@@ -7,6 +7,47 @@ allowed-tools: ["Bash", "Read", "Write", "AskUserQuestion", "Glob", "Grep", "Too
 
 Generate or enrich a `CLAUDE.local.md` file for the current repository with project context, integration links, and related repos. This file is globally gitignored and automatically loaded by Claude Code.
 
+## Step 0: Check global gitignore
+
+Before anything else, verify that `CLAUDE.local.md` is globally gitignored. Run:
+
+```bash
+# Check global gitignore file location
+git config --global core.excludesFile 2>/dev/null || echo "DEFAULT"
+
+# Check if CLAUDE.local.md is already in the global gitignore
+grep -q "CLAUDE.local.md" ~/.config/git/ignore 2>/dev/null && echo "FOUND_DEFAULT" || echo "NOT_IN_DEFAULT"
+grep -q "CLAUDE.local.md" "$(git config --global core.excludesFile 2>/dev/null)" 2>/dev/null && echo "FOUND_CUSTOM" || echo "NOT_IN_CUSTOM"
+```
+
+If `CLAUDE.local.md` is NOT found in any global gitignore, warn the user:
+
+```
+⚠️  CLAUDE.local.md is not in your global gitignore.
+
+To prevent accidentally committing this file, run:
+
+  echo "CLAUDE.local.md" >> ~/.config/git/ignore
+
+Or if you use a custom global gitignore:
+
+  echo "CLAUDE.local.md" >> $(git config --global core.excludesFile)
+```
+
+Then ask:
+
+**Question**: "CLAUDE.local.md isn't globally gitignored. Want me to add it?"
+- Header: "Gitignore"
+- Options:
+  - **"Yes, add it"** — Append to ~/.config/git/ignore (or custom path)
+  - **"No, I'll handle it"** — Continue without adding
+
+If "Yes", append `CLAUDE.local.md` to the appropriate global gitignore file. If the default `~/.config/git/ignore` doesn't exist, create it.
+
+If already found, continue silently.
+
+---
+
 ## Step 1: Auto-detect repo context
 
 Gather as much context as possible before prompting the user:
