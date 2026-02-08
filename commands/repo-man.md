@@ -70,15 +70,15 @@ git branch --show-current 2>/dev/null
 # Check for existing CLAUDE.local.md
 test -f CLAUDE.local.md && echo "EXISTS" || echo "NOT_FOUND"
 
-# Check for existing CLAUDE.md (for context about the project)
-test -f CLAUDE.md && echo "CLAUDE.md EXISTS" || echo "No CLAUDE.md"
+# Find all CLAUDE*.md files in the repo root (CLAUDE.md, CLAUDE.local.md, etc.)
+find . -maxdepth 1 -name "CLAUDE*.md" 2>/dev/null
 
 # Check for package.json, pyproject.toml, etc to detect project type
 # Note: use find instead of ls globs to avoid zsh "no matches found" errors
 find . -maxdepth 1 -name "package.json" -o -name "pyproject.toml" -o -name "Cargo.toml" -o -name "go.mod" -o -name "*.csproj" -o -name "*.sln" -o -name "Makefile" -o -name "deepgram.toml" 2>/dev/null
 ```
 
-If `CLAUDE.md` exists, read it for project context.
+Read **all** `CLAUDE*.md` files found (e.g. `CLAUDE.md`, `CLAUDE.local.md`, `CLAUDE.toml.md`, etc.) for project context. These files contain existing instructions, conventions, and project knowledge that should inform the generated `CLAUDE.local.md` — extract project description, tech stack, conventions, related repos, and any other relevant details from them.
 
 ---
 
