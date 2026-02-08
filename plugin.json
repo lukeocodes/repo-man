@@ -1,0 +1,18 @@
+{
+  "name": "repo-man",
+  "version": "0.1.0",
+  "description": "Repo Management Details - interactive CLAUDE.local.md scaffolding for any repository",
+  "author": {
+    "name": "Luke Oliff",
+    "email": "luke@lukeoliff.com"
+  },
+  "homepage": "https://github.com/lukeocodes/repo-man",
+  "repository": "https://github.com/lukeocodes/repo-man",
+  "license": "MIT",
+  "keywords": [
+    "claude-local",
+    "repo-management",
+    "scaffolding",
+    "developer-experience"
+  ]
+}
